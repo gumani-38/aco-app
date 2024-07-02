@@ -8,42 +8,169 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-import React, { useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   FontAwesome,
   Feather,
   FontAwesome5,
-  EvilIcons,
   MaterialIcons,
+  Foundation,
 } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { BottomSheetModal } from "@gorhom/bottom-sheet";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { supabase } from "../utils/supabase";
+import * as FileSystem from "expo-file-system";
+import { decode } from "base64-arraybuffer";
+import UpdateBottomSheet from "../components/UpdateBottomSheet";
+import { AuthContext } from "../context/AuthContext";
 
 const ProfileScreen = () => {
+  const { userId, user } = useContext(AuthContext);
   const navigation = useNavigation();
   const [image, setImage] = useState(null);
   const bottomSheetModalRef = useRef(null);
-  const bioBottomSheetModalRef = useRef(null);
-  const [edtBio, setEdtBio] = useState(false);
-  const [hidePassword, setHidePassword] = useState(true);
-  const snapPoints = ["45%"];
-  const bioSnapPoints = ["45%"];
+  const [type, setType] = useState(null);
+  const [followers, setFollowers] = useState(null);
+  const [following, setFollowing] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
 
-  function handlePresentModal() {
+  useFocusEffect(
+    useCallback(() => {
+      if (userId) {
+        getUserProfile();
+        getFollowers();
+        getFollowings();
+      }
+      const allChangesSubscription = supabase
+        .channel("public:*")
+        .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
+          getUserProfile();
+          getFollowers();
+          getFollowings();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(allChangesSubscription);
+      };
+    }, [])
+  );
+  const getFollowers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("connections")
+        .select(`*`)
+        .eq("user", userId);
+      if (error) {
+        throw error;
+      }
+      setFollowers(data.length);
+    } catch (error) {
+      console.log("error message getting followers count : ", error.message);
+    }
+  };
+  const getFollowings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("connections")
+        .select(`*`)
+        .eq("following", userId);
+      if (error) {
+        throw error;
+      }
+      setFollowing(data.length);
+    } catch (error) {
+      console.log("error getting the followings count : ", error.message);
+    }
+  };
+
+  const getUserProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(`*, countries(name)`)
+        .eq("id", userId);
+      if (error) {
+        throw error;
+      }
+      setUserProfile(data[0]);
+      setImage(data[0].photo);
+    } catch (error) {
+      console.log("error message getting the profile : ", error.message);
+    }
+  };
+  const uploadImage = async (uri) => {
+    try {
+      const base64 = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const filePath = `profile_photos/${userId}_${Date.now()}.png`;
+      const contentType = "image/png";
+
+      const { data, error } = await supabase.storage
+        .from("profiles")
+        .upload(filePath, decode(base64), { contentType });
+
+      if (error) {
+        console.error("Error uploading image:", error.message);
+      } else {
+        console.log("Image uploaded successfully:", data);
+        await getUploadedImageUri(filePath);
+      }
+    } catch (err) {
+      console.error("Error reading file or uploading image:", err.message);
+    }
+  };
+  const getUploadedImageUri = async (filePath) => {
+    try {
+      const { data, error } = supabase.storage
+        .from("profiles")
+        .getPublicUrl(filePath);
+
+      if (error) {
+        console.error("Error retrieving the image URL:", error.message);
+      } else {
+        setImage(data.publicUrl);
+        const { error } = await supabase
+          .from("profiles")
+          .update({ photo: data.publicUrl })
+          .eq("id", userId);
+        console.log("Uploaded image URL:", data);
+      }
+    } catch (err) {
+      console.error("Error retrieving the image URL:", err.message);
+    }
+  };
+  const deleteImage = async (filePath, newImageUri) => {
+    try {
+      const { error } = await supabase.storage
+        .from("profiles")
+        .remove([filePath]);
+
+      if (error) {
+        console.error("Error deleting old image:", error.message);
+      } else {
+        await uploadImage(newImageUri);
+      }
+    } catch (err) {
+      console.error("Error deleting the image:", err.message);
+    }
+  };
+
+  function handlePresentModal(type) {
+    setType(type);
     bottomSheetModalRef.current?.present();
   }
   function handleCloseModal() {
     bottomSheetModalRef.current?.close();
-  }
-  function handleBioPresentModal() {
-    bioBottomSheetModalRef.current?.present();
-  }
-  function handleBioCloseModal() {
-    bioBottomSheetModalRef.current?.close();
   }
   const pickImage = async () => {
     // No permissions request is necessary for launching the image library
@@ -57,7 +184,29 @@ const ProfileScreen = () => {
     console.log(result);
 
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select(`*`)
+        .eq("id", userId);
+
+      if (error) {
+        console.error("Error fetching user profile:", error.message);
+        return;
+      }
+      if (!data[0].photo) {
+        await uploadImage(result.assets[0].uri);
+      } else {
+        await deleteImage(data.photo, result.assets[0].uri);
+      }
+    }
+  };
+  const handleLogOutClick = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      navigation.navigate("Login");
+    } catch (error) {
+      console.log(`logging out the user`, error);
     }
   };
   return (
@@ -71,22 +220,47 @@ const ProfileScreen = () => {
             style={{ padding: 7 }}
             showsVerticalScrollIndicator={false}
           >
-            <Pressable onPress={() => navigation.navigate("AddGroup")}>
-              <View style={{ marginVertical: 10, alignItems: "flex-end" }}>
+            <View
+              style={{
+                marginVertical: 10,
+                alignItems: "flex-end",
+                flexDirection: "row",
+                justifyContent: "space-between",
+              }}
+            >
+              <Pressable onPress={() => navigation.navigate("MyPost")}>
                 <View
                   style={{
+                    flexDirection: "row",
                     backgroundColor: "#9B0E10",
+                    alignItems: "center",
+                    justifyContent: "center",
                     width: 32,
                     height: 32,
                     borderRadius: 16,
-                    alignItems: "center",
-                    justifyContent: "center",
                   }}
                 >
-                  <MaterialIcons name="group-add" size={22} color="white" />
+                  <Foundation name="page-multiple" size={19} color="white" />
                 </View>
-              </View>
-            </Pressable>
+              </Pressable>
+              {userProfile?.isAdmin && (
+                <Pressable onPress={() => navigation.navigate("AddGroup")}>
+                  <View
+                    style={{
+                      backgroundColor: "#9B0E10",
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <MaterialIcons name="group-add" size={22} color="white" />
+                  </View>
+                </Pressable>
+              )}
+            </View>
+
             <View
               style={{
                 flex: 1,
@@ -102,13 +276,13 @@ const ProfileScreen = () => {
                     style={{
                       position: "relative",
                       padding: 10,
-                      width: 140,
-                      height: 140,
+                      width: 90,
+                      height: 90,
                       justifyContent: "center",
                       alignItems: "center",
-                      borderWidth: 3,
+                      borderWidth: 1,
                       resizeMode: "cover",
-                      borderRadius: 70,
+                      borderRadius: 45,
                       borderColor: "#9F9F9F",
                     }}
                   />
@@ -137,38 +311,41 @@ const ProfileScreen = () => {
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 34,
-                    height: 34,
-                    borderRadius: 17,
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
                     bottom: 12,
-                    right: 2,
+                    right: -6,
                   }}
                 >
                   <View>
-                    <FontAwesome name="camera" size={20} color="white" />
+                    <FontAwesome name="camera" size={15} color="white" />
                   </View>
                 </Pressable>
               </View>
               <View>
                 <Text
                   style={{
-                    fontSize: 17,
+                    fontSize: 15,
                     fontWeight: "bold",
                     textAlign: "center",
                     marginVertical: 3,
+                    textTransform: "capitalize",
                   }}
                 >
-                  Karabo Mashitela
+                  {user?.first_name + "  " + user?.last_name}
                 </Text>
                 <Text
                   style={{
                     fontSize: 15,
-                    fontWeight: "500",
+                    fontWeight: "600",
                     color: "#41DDFF",
                     textAlign: "center",
+
+                    textTransform: "capitalize",
                   }}
                 >
-                  @Peachys
+                  {userProfile?.username}
                 </Text>
                 <Text
                   style={{
@@ -178,23 +355,87 @@ const ProfileScreen = () => {
                     textAlign: "center",
                   }}
                 >
-                  Gender: Female
+                  Gender: {userProfile?.gender}
+                </Text>
+              </View>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <View
+                style={{ marginHorizontal: 4, flexDirection: "row", gap: 3 }}
+              >
+                <Text
+                  style={{
+                    backgroundColor: "#9B0E10",
+                    borderRadius: 20,
+                    paddingHorizontal: 8,
+                    textAlign: "center",
+                    paddingVertical: 1,
+                    color: "white",
+                    fontSize: 11,
+                  }}
+                >
+                  {followers}
+                </Text>
+                <Text
+                  style={{
+                    textTransform: "capitalize",
+                    fontSize: 14,
+                    fontWeight: "500",
+                  }}
+                >
+                  followers
+                </Text>
+              </View>
+              <View
+                style={{ height: 19, backgroundColor: "#888", width: 1 }}
+              ></View>
+              <View
+                style={{ marginHorizontal: 4, flexDirection: "row", gap: 3 }}
+              >
+                <Text
+                  style={{
+                    backgroundColor: "#9B0E10",
+                    borderRadius: 20,
+                    paddingHorizontal: 8,
+                    textAlign: "center",
+                    paddingVertical: 1,
+                    color: "white",
+                    fontSize: 11,
+                  }}
+                >
+                  {following}
+                </Text>
+                <Text
+                  style={{
+                    textTransform: "capitalize",
+                    fontSize: 14,
+                    fontWeight: "500",
+                  }}
+                >
+                  connected
                 </Text>
               </View>
             </View>
 
-            <View style={{ marginTop: 15 }}>
-              <Pressable
-                onPress={handleBioPresentModal}
-                style={{
-                  flex: 1,
-                  backgroundColor: "white",
-                  padding: 17,
-                  borderRadius: 5,
-                  marginBottom: 15,
-                }}
-              >
-                <View>
+            <View
+              style={{
+                marginTop: 15,
+              }}
+            >
+              <Pressable onPress={() => handlePresentModal("")}>
+                <View
+                  style={{
+                    padding: 14,
+                    borderRadius: 5,
+                    backgroundColor: "white",
+                  }}
+                >
                   <Text style={{ fontSize: 15, fontWeight: "bold" }}>Bio</Text>
                 </View>
               </Pressable>
@@ -203,9 +444,10 @@ const ProfileScreen = () => {
                 style={{
                   flex: 1,
                   backgroundColor: "white",
-                  padding: 17,
+                  padding: 14,
                   borderRadius: 5,
-                  marginBottom: 15,
+                  marginTop: 10,
+                  marginBottom: 7,
                 }}
               >
                 <View
@@ -219,7 +461,7 @@ const ProfileScreen = () => {
                     Date of Birth -
                   </Text>
                   <Text style={{ fontSize: 13, color: "#9F9F9F" }}>
-                    09/11/2000
+                    {userProfile?.date_of_birth}
                   </Text>
                 </View>
               </View>
@@ -228,9 +470,9 @@ const ProfileScreen = () => {
                 style={{
                   flex: 1,
                   backgroundColor: "white",
-                  padding: 17,
+                  padding: 14,
                   borderRadius: 5,
-                  marginBottom: 15,
+                  marginBottom: 7,
                 }}
               >
                 <View
@@ -244,7 +486,7 @@ const ProfileScreen = () => {
                     Email -
                   </Text>
                   <Text style={{ fontSize: 13, color: "#9F9F9F" }}>
-                    karaboMashitela@gmail.com
+                    {user?.email}
                   </Text>
                 </View>
               </View>
@@ -253,9 +495,9 @@ const ProfileScreen = () => {
                 style={{
                   flex: 1,
                   backgroundColor: "white",
-                  padding: 17,
+                  padding: 14,
                   borderRadius: 5,
-                  marginBottom: 15,
+                  marginBottom: 7,
                 }}
               >
                 <View
@@ -269,7 +511,7 @@ const ProfileScreen = () => {
                     Location -
                   </Text>
                   <Text style={{ fontSize: 13, color: "#9F9F9F" }}>
-                    Pretoria
+                    {userProfile?.countries?.name}
                   </Text>
                 </View>
               </View>
@@ -278,9 +520,9 @@ const ProfileScreen = () => {
                 style={{
                   flex: 1,
                   backgroundColor: "white",
-                  padding: 17,
+                  padding: 14,
                   borderRadius: 5,
-                  marginBottom: 15,
+                  marginBottom: 7,
                 }}
               >
                 <View
@@ -288,7 +530,7 @@ const ProfileScreen = () => {
                     flexDirection: "row",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    marginBottom: 15,
+                    marginBottom: 7,
                   }}
                 >
                   <Text style={{ fontSize: 15, fontWeight: "bold" }}>
@@ -304,7 +546,7 @@ const ProfileScreen = () => {
                     <Text style={{ fontSize: 13, color: "#9F9F9F" }}>
                       **********
                     </Text>
-                    <Pressable onPress={handlePresentModal}>
+                    <Pressable onPress={() => handlePresentModal("password")}>
                       <Feather
                         style={{ top: -3 }}
                         name="edit"
@@ -315,216 +557,49 @@ const ProfileScreen = () => {
                   </View>
                 </View>
               </View>
+              <Pressable onPress={handleLogOutClick}>
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#9B0E10",
+                    padding: 10,
+                    borderRadius: 5,
+                    marginTop: 12,
+                    marginBottom: 20,
+                  }}
+                >
+                  <View
+                    style={{
+                      flex: 1,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        flex: 1,
+                        fontSize: 15,
+                        fontWeight: "bold",
+                        color: "white",
+                        textAlign: "center",
+                      }}
+                    >
+                      Sign Out
+                    </Text>
+                  </View>
+                </View>
+              </Pressable>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
-      <BottomSheetModal
-        ref={bottomSheetModalRef}
-        index={0}
-        snapPoints={snapPoints}
-        backgroundStyle={{
-          backgroundColor: "white",
-          borderRadius: 30,
-          shadowColor: "#171717",
-          shadowOffset: { width: -2, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 3,
-          padding: 10,
-        }}
-      >
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={{ flex: 1 }}
-          >
-            <View
-              style={{
-                marginHorizontal: 8,
-                marginBottom: 15,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <Text style={{ fontWeight: "bold", fontSize: 16 }}>Password</Text>
-              <Pressable onPress={handleCloseModal}>
-                <FontAwesome5 name="times" size={18} color="#9F9F9F" />
-              </Pressable>
-            </View>
-            {hidePassword ? (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  padding: 6,
-                  borderWidth: 2,
-                  borderRadius: 6,
-                  borderColor: "#9F9F9F",
-                  marginHorizontal: 8,
-                  marginBottom: 15,
-                }}
-              >
-                <TextInput
-                  placeholder="***********"
-                  style={{ flex: 1 }}
-                  secureTextEntry
-                />
-                <Pressable onPress={() => setHidePassword(!hidePassword)}>
-                  <Feather name="eye-off" size={22} color="black" />
-                </Pressable>
-              </View>
-            ) : (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  padding: 6,
-                  borderWidth: 2,
-                  borderRadius: 6,
-                  borderColor: "#9F9F9F",
-                  marginHorizontal: 8,
-                  marginBottom: 15,
-                }}
-              >
-                <TextInput placeholder="***********" style={{ flex: 1 }} />
-                <Pressable onPress={() => setHidePassword(!hidePassword)}>
-                  <Feather name="eye" size={22} color="black" />
-                </Pressable>
-              </View>
-            )}
-            <View>
-              <Pressable
-                style={{
-                  backgroundColor: "#9B0E10",
-                  borderRadius: 4,
-                  marginHorizontal: 8,
-                  padding: 12,
-                  marginBottom: 8,
-                  marginTop: 26,
-                }}
-              >
-                <Text
-                  style={{
-                    textAlign: "center",
-                    fontWeight: "bold",
-                    fontSize: 16,
-                    color: "white",
-                  }}
-                >
-                  Update
-                </Text>
-              </Pressable>
-            </View>
-          </KeyboardAvoidingView>
-        </ScrollView>
-      </BottomSheetModal>
-      <BottomSheetModal
-        ref={bioBottomSheetModalRef}
-        index={0}
-        snapPoints={bioSnapPoints}
-        backgroundStyle={{
-          backgroundColor: "#fff",
-          borderRadius: 30,
-          padding: 10,
-          shadowColor: "#fff",
-          shadowRadius: 10,
-        }}
-      >
-        <View
-          style={{
-            marginTop: 5,
-            marginBottom: 7,
-            flex: 1,
-            alignSelf: "flex-end",
-            marginHorizontal: 10,
-          }}
-        >
-          <Pressable onPress={handleBioCloseModal}>
-            <FontAwesome5 name="times" size={18} color="#9F9F9F" />
-          </Pressable>
-        </View>
-        <View
-          style={{
-            marginHorizontal: 8,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <Text style={{ fontWeight: "bold", fontSize: 16 }}>Bio</Text>
-          {edtBio ? (
-            <Pressable onPress={() => setEdtBio(!edtBio)}>
-              <MaterialIcons name="cancel" size={22} color="red" />
-            </Pressable>
-          ) : (
-            <Pressable onPress={() => setEdtBio(!edtBio)}>
-              <EvilIcons name="pencil" size={22} color="#9B0E10" />
-            </Pressable>
-          )}
-        </View>
-        <ScrollView>
-          <View style={{ marginHorizontal: 8, marginTop: 10 }}>
-            {edtBio ? (
-              <View>
-                <TextInput
-                  defaultValue="Lorem ipsum dolor sit, amet consectetur adipisicing elit. Placeat
-                ipsa at, voluptatibus porro reiciendis, officiis nam animi eveniet
-                rem alias quidem, voluptate ex provident! Sunt earum ducimus iusto
-                non, reiciendis similique neque laborum. Cum repellat sunt
-                asperiores impedit officiis, accusantium deleniti dicta corporis
-                optio voluptate enim hic adipisci numquam nostrum."
-                  style={{
-                    paddingVertical: 7,
-                    paddingHorizontal: 8,
-                    backgroundColor: "white",
-                    borderWidth: 3,
-                    borderRadius: 4,
-                    minHeight: 160,
-                    color: "#001138",
-                    textAlignVertical: "top",
-                    borderColor: "#9F9F9F",
-                    marginBottom: 25,
-                  }}
-                  placeholder="enter  caption..."
-                  multiline={true}
-                  editable
-                  placeholderTextColor={"#9F9F9F"}
-                />
-                <Pressable
-                  style={{
-                    backgroundColor: "#9B0E10",
-                    borderRadius: 4,
-                    padding: 10,
-                    marginBottom: 20,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontSize: 16,
-                      fontWeight: "bold",
-                      color: "white",
-                      textAlign: "center",
-                    }}
-                  >
-                    Update
-                  </Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Text style={{ color: "#9F9F9F", fontSize: 14 }}>
-                Lorem ipsum dolor sit, amet consectetur adipisicing elit.
-                Placeat ipsa at, voluptatibus porro reiciendis, officiis nam
-                animi eveniet rem alias quidem, voluptate ex provident! Sunt
-                earum ducimus iusto non, reiciendis similique neque laborum. Cum
-                repellat sunt asperiores impedit officiis, accusantium deleniti
-                dicta corporis optio voluptate enim hic adipisci numquam
-                nostrum.
-              </Text>
-            )}
-          </View>
-        </ScrollView>
-      </BottomSheetModal>
+      <UpdateBottomSheet
+        bottomSheetModalRef={bottomSheetModalRef}
+        type={type}
+        userId={userId}
+        handleCloseModal={handleCloseModal}
+      />
     </>
   );
 };

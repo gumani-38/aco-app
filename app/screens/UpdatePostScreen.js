@@ -17,16 +17,18 @@ import * as ImagePicker from "expo-image-picker";
 import { ResizeMode, Video } from "expo-av";
 import * as FileSystem from "expo-file-system";
 import { decode } from "base64-arraybuffer";
-import { supabase } from "../utils/supabase";
 import ProgressBar from "../components/ProgressBar";
 import SuccessAlert from "../components/SuccessAlert";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { supabase } from "../utils/supabase";
 import { AuthContext } from "../context/AuthContext";
 
-const UploadPostScreen = () => {
+const UpdatePostScreen = () => {
+  const { postId } = useRoute().params;
   const [medias, setMedias] = useState([]);
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
+  const [tags, setTags] = useState("");
   const [captionError, setCaptionError] = useState(false);
   const { userId } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
@@ -34,17 +36,99 @@ const UploadPostScreen = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const navigation = useNavigation();
 
-  const [tags, setTags] = useState("");
-
   useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUserId(user.id);
-    };
-    getUser();
-  }, []);
+    if (postId) {
+      getPost();
+      getMedia();
+      getTags();
+    }
+  }, [postId]);
+
+  const getPost = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .select("*")
+        .eq("id", postId);
+      if (error) {
+        throw error;
+      }
+      const { title, caption } = data[0];
+      setTitle(title);
+      setCaption(caption);
+    } catch (error) {
+      console.log("error getting post: ", error);
+    }
+  };
+  const getTags = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("tags")
+        .select("*")
+        .eq("post", postId);
+      if (error) {
+        throw error;
+      }
+      setTags(data.map((tag) => tag.tag).join(", "));
+    } catch (error) {
+      console.log("error getting tags: ", error);
+    }
+  };
+  const updateTags = async () => {
+    try {
+      // Fetch current tags from the database
+      const { data: currentTags, error } = await supabase
+        .from("tags")
+        .select("tag")
+        .eq("post", postId);
+      if (error) {
+        throw error;
+      }
+
+      // Map current tags from the database to a simple array of tag strings
+      const currentTagNames = currentTags.map((tag) => tag.tag);
+
+      // Parse input tags
+      const inputTags = tags.split(",").map((tag) => tag.trim());
+
+      // Find tags to be added
+      const tagsToAdd = inputTags.filter(
+        (tag) => !currentTagNames.includes(tag)
+      );
+
+      // Find tags to be removed
+      const tagsToRemove = currentTagNames.filter(
+        (tag) => !inputTags.includes(tag)
+      );
+
+      // Insert new tags
+      for (let tag of tagsToAdd) {
+        await supabase.from("tags").insert({ post: postId, tag });
+      }
+
+      // Remove old tags
+      for (let tag of tagsToRemove) {
+        await supabase.from("tags").delete().eq("post", postId).eq("tag", tag);
+      }
+    } catch (error) {
+      console.error("Error updating tags: ", error.message);
+    }
+  };
+
+  const getMedia = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("post_media")
+        .select("*")
+        .eq("post", postId);
+      if (error) {
+        throw error;
+      }
+      setMedias(data);
+    } catch (error) {
+      console.log("error getting media: ", error);
+    }
+  };
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -56,118 +140,51 @@ const UploadPostScreen = () => {
     });
 
     if (!result.canceled) {
-      setMedias([...medias, ...result.assets]);
+      console.log(result.assets);
+      uploadImages(result.assets);
+      await getMedia();
     }
   };
-  const handleUploadPostClick = async () => {
+  const uploadImages = async (postMedias) => {
     try {
-      if (!caption) {
-        setCaptionError(true);
-        return;
-      }
-      setLoading(true);
-
-      const progressInterval = setInterval(() => {
-        setProgress((prevProgress) => {
-          if (prevProgress >= 1) {
-            clearInterval(progressInterval);
-            return 1;
-          }
-          return prevProgress + 0.1;
-        });
-      }, 100);
-
-      const { data, error } = await supabase
-        .from("posts")
-        .insert({
-          author: userId,
-          title: title ? title : null,
-          caption: caption,
-        })
-        .select();
-
-      if (error) {
-        throw error;
-      }
-      uploadTags(data[0].id);
-      uploadImages(data[0].id);
-      setTimeout(() => {
-        setLoading(false);
-        setProgress(0);
-        setShowSuccess(true);
-        setMedias([]);
-        setCaption("");
-        setTitle("");
-        setTags("");
-        setTimeout(() => {
-          navigation.navigate("MyPost");
-          setShowSuccess(false);
-        }, 300);
-      }, 1000);
-    } catch (error) {
-      console.log("Error inserting data:", error);
-    }
-  };
-  const uploadTags = async (postId) => {
-    try {
-      const { data, error } = await supabase
-        .from("tags")
-        .insert([
-          ...tags
-            .split(",")
-            .map((tag) => ({ tag: tag.trim(), post: postId, user: userId })),
-        ]);
-      if (error) {
-        throw error;
-      }
-      console.log("Tags inserted successfully:", data);
-    } catch (error) {
-      console.log("Error inserting tags:", error);
-    }
-  };
-  const uploadImages = async (postId) => {
-    try {
-      for (let i = 0; i < medias.length; i++) {
-        let media = medias[i];
-        const base64 = await FileSystem.readAsStringAsync(media.uri, {
+      for (let i = 0; i < postMedias.length; i++) {
+        let item = postMedias[i];
+        const base64 = await FileSystem.readAsStringAsync(item.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
         const filePath = `${userId + new Date().getTime()}.${
-          media.type === "image" ? "png" : "mp4"
+          item.type === "image" ? "png" : "mp4"
         }`;
-        const contentType = media.type === "image" ? "image/png" : "video/mp4";
+        const contentType = item.type === "image" ? "image/png" : "video/mp4";
         const { data, error } = await supabase.storage
           .from("posts")
           .upload(filePath, decode(base64), { contentType });
 
         if (error) {
-          console.error("Error uploading image:", error.message);
-        } else {
-          console.log("Image uploaded successfully:", data);
-          await getUploadedImageUri(filePath, postId, media.type);
+          throw error;
         }
+        await getUploadedImageUri(filePath, item.type);
       }
-      navigation.navigate("MyPost");
     } catch (err) {
       console.error("Error reading file or uploading image:", err.message);
     }
   };
-  const getUploadedImageUri = async (filePath, postId, type) => {
+  const getUploadedImageUri = async (filePath, type) => {
     try {
       const { data, error } = supabase.storage
         .from("posts")
         .getPublicUrl(filePath);
 
       if (error) {
-        console.error("Error retrieving the image URL:", error.message);
-      } else {
-        insertMedias(postId, type, data.publicUrl);
+        throw error;
       }
+      insertMedias(type, data.publicUrl);
     } catch (err) {
       console.error("Error retrieving the image URL:", err.message);
     }
   };
-  const insertMedias = async (postId, type, media) => {
+
+  const insertMedias = async (type, media) => {
     try {
       const { data, error } = await supabase
         .from("post_media")
@@ -179,16 +196,102 @@ const UploadPostScreen = () => {
       console.error("Error uploading image to the database: ", err.message);
     }
   };
-  const deleteImage = async (uri) => {
+
+  const deleteImage = async (uri, id) => {
     try {
-      setMedias(medias.filter((i) => i.uri !== uri));
-    } catch (err) {
-      console.log("Error deleting image", err.message);
+      const parsedURL = new URL(uri);
+      const path = parsedURL.pathname.split("/storage/v1/object/public/")[1];
+      const bucket = path.split("/")[0];
+      const filePath = path.split("/").slice(1).join("/");
+      const { error } = await supabase.storage.from(bucket).remove([filePath]);
+      if (error) {
+        throw error;
+      }
+      await supabase.from("post_media").delete().eq("id", id);
+      getMedia();
+    } catch (error) {
+      console.error("Error deleting old image:", error.message);
+    }
+  };
+  const handleUpdatePostClick = async () => {
+    if (!caption.trim()) {
+      setCaptionError(true);
+      return;
+    }
+    setCaptionError(false);
+    setLoading(true);
+    const progressInterval = setInterval(() => {
+      setProgress((prevProgress) => {
+        if (prevProgress >= 1) {
+          clearInterval(progressInterval);
+          return 1;
+        }
+        return prevProgress + 0.1;
+      });
+    }, 100);
+    try {
+      const { data, error } = await supabase
+        .from("posts")
+        .update({
+          title: title,
+          caption: caption,
+        })
+        .eq("id", postId);
+
+      if (error) {
+        throw error;
+      }
+      updateTags();
+      setTimeout(() => {
+        setLoading(false);
+        setProgress(0);
+        setShowSuccess(true);
+        setTimeout(() => {
+          navigation.navigate("MyPost");
+          setShowSuccess(false);
+        }, 700);
+      }, 2000);
+    } catch (error) {
+      console.log("error updating post: ", error);
     }
   };
   return (
     <>
       <SafeAreaView style={styles.container}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: 7,
+            marginBottom: 15,
+          }}
+        >
+          <Pressable onPress={() => navigation.goBack()}>
+            <View
+              style={{
+                backgroundColor: "#9B0E10",
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Entypo name="chevron-left" size={27} color="white" />
+            </View>
+          </Pressable>
+          <Text style={{ fontSize: 16, fontWeight: "bold" }}>Edit Post</Text>
+          <Image
+            source={require("../assets/aco-logo.png")}
+            style={{
+              width: 50,
+              height: 50,
+              resizeMode: "contain",
+              borderRadius: 25,
+            }}
+          />
+        </View>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
@@ -202,16 +305,16 @@ const UploadPostScreen = () => {
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: 40,
+                marginBottom: 10,
               }}
             >
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {medias?.map((item, index) => (
-                  <View style={{ position: "relative" }}>
+                  <View style={{ position: "relative" }} key={index}>
                     {item?.type === "video" ? (
                       <>
                         <Video
-                          source={{ uri: item?.uri }}
+                          source={{ uri: item?.media }}
                           style={{
                             width: 90,
                             height: 90,
@@ -224,7 +327,7 @@ const UploadPostScreen = () => {
                           isMuted
                         />
                         <Pressable
-                          onPress={() => deleteImage(item?.uri)}
+                          onPress={() => deleteImage(item?.media, item.id)}
                           style={{
                             backgroundColor: "#9B0E10",
                             position: "absolute",
@@ -240,7 +343,7 @@ const UploadPostScreen = () => {
                     ) : (
                       <>
                         <Image
-                          source={{ uri: item?.uri }}
+                          source={{ uri: item?.media }}
                           style={{
                             width: 90,
                             height: 90,
@@ -249,7 +352,7 @@ const UploadPostScreen = () => {
                           }}
                         />
                         <Pressable
-                          onPress={() => deleteImage(item?.uri)}
+                          onPress={() => deleteImage(item?.media, item.id)}
                           style={{
                             backgroundColor: "#9B0E10",
                             position: "absolute",
@@ -291,7 +394,7 @@ const UploadPostScreen = () => {
                     borderRadius: 4,
                     color: "#001138",
                     borderColor: "#9F9F9F",
-                    marginBottom: 25,
+                    marginBottom: 10,
                   }}
                   placeholder="enter your title (optional)"
                   value={title}
@@ -356,7 +459,7 @@ const UploadPostScreen = () => {
                     fontSize: 12,
                     fontWeight: "700",
                     marginTop: 3,
-                    marginBottom: 15,
+                    marginBottom: 6,
                   }}
                 >
                   Tags should be seperated by comma( creative,africa,etc)
@@ -368,30 +471,24 @@ const UploadPostScreen = () => {
                 backgroundColor: "#9B0E10",
                 padding: 10,
                 borderRadius: 5,
-                marginTop: 35,
+                marginTop: 10,
+                justifyContent: "center",
                 alignItems: "center",
                 flexDirection: "row",
                 marginBottom: 40,
                 gap: 80,
               }}
-              onPress={handleUploadPostClick}
+              onPress={handleUpdatePostClick}
             >
-              <Entypo
-                style={{ marginHorizontal: 14 }}
-                name="upload-to-cloud"
-                size={24}
-                color="white"
-              />
               <Text
                 style={{
                   textAlign: "center",
                   fontSize: 18,
                   fontWeight: "bold",
                   color: "#fff",
-                  alignItems: "center",
                 }}
               >
-                Upload Post
+                Update Post
               </Text>
             </Pressable>
           </ScrollView>
@@ -403,7 +500,7 @@ const UploadPostScreen = () => {
   );
 };
 
-export default UploadPostScreen;
+export default UpdatePostScreen;
 
 const styles = StyleSheet.create({
   container: {

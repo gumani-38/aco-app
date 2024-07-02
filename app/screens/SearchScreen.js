@@ -1,3 +1,4 @@
+import { useContext, useEffect, useState } from "react";
 import {
   Image,
   Platform,
@@ -7,530 +8,93 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  FlatList,
   View,
 } from "react-native";
-import React from "react";
 import { FontAwesome, Entypo } from "@expo/vector-icons";
-import { ScrollView } from "react-native-gesture-handler";
 import { useNavigation } from "@react-navigation/native";
+import UserCard from "../components/UserCard";
+import { supabase } from "../utils/supabase";
+import { AuthContext } from "../context/AuthContext";
 
 const SearchScreen = () => {
+  const [results, setResults] = useState([]);
+  const { userId } = useContext(AuthContext);
   const navigation = useNavigation();
+
+  const handleSearchClick = async (text) => {
+    try {
+      const { data, error } = await supabase.from("profiles").select("*");
+      if (error) {
+        throw error;
+      }
+
+      const filteredData = data.filter(
+        (profile) =>
+          (profile.username &&
+            profile.username.toLowerCase().includes(text.toLowerCase())) ||
+          (profile.name &&
+            profile.name.toLowerCase().includes(text.toLowerCase())) ||
+          (profile.lastname &&
+            profile.lastname.toLowerCase().includes(text.toLowerCase()))
+      );
+      setResults(filteredData);
+    } catch (error) {
+      console.error("Error searching profiles:", error.message);
+      // Handle error, e.g., show error message to user
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: 7,
-          marginBottom: 40,
-          marginTop: 18,
-        }}
-      >
+      <View style={styles.header}>
         <Pressable onPress={() => navigation.goBack()}>
-          <View
-            style={{
-              backgroundColor: "#9B0E10",
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+          <View style={styles.backButton}>
             <Entypo name="chevron-left" size={32} color="white" />
           </View>
         </Pressable>
-        <Image
-          source={require("../assets/aco-logo.png")}
-          style={{
-            width: 50,
-            height: 50,
-            resizeMode: "contain",
-            borderRadius: 25,
-          }}
-        />
+        <Image source={require("../assets/aco-logo.png")} style={styles.logo} />
       </View>
 
-      <View style={{ padding: 4 }}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            borderWidth: 3,
-            borderRadius: 4,
-            borderColor: "#9F9F9F",
-            padding: 2,
-            backgroundColor: "#fff",
-          }}
-        >
-          <TextInput style={{ flex: 1 }} placeholder="Search a profile..." />
-          <View
+      <View style={styles.searchContainer}>
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Search by username, name..."
+            onChangeText={handleSearchClick}
+          />
+        </View>
+      </View>
+
+      <View style={styles.resultsContainer}>
+        {results.length <= 0 && (
+          <Text
             style={{
-              backgroundColor: "#9B0E10",
-              width: 36,
-              height: 36,
-              alignItems: "center",
-              justifyContent: "center",
-              borderRadius: 18,
+              color: "red",
+              fontSize: 14,
+              margin: 3,
+              textAlign: "center",
             }}
           >
-            <FontAwesome name="search" size={21} color="white" />
-          </View>
-        </View>
+            No profile found...
+          </Text>
+        )}
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <UserCard
+              username={item.username}
+              name={item.name}
+              image={item.photo}
+              lastName={item.lastName}
+              profileId={item.id}
+              userId={userId}
+              // Add other relevant props from profile data
+            />
+          )}
+        />
       </View>
-      <View>
-        <Text
-          style={{
-            textAlign: "center",
-            marginTop: 20,
-            fontSize: 18,
-            marginBottom: 7,
-          }}
-        >
-          Profile results...
-        </Text>
-      </View>
-      <ScrollView style={{ padding: 7 }} showsVerticalScrollIndicator={false}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#fff",
-            padding: 4,
-            marginBottom: 10,
-            borderRadius: 6,
-          }}
-        >
-          <View style={{ flexDirection: "row", gap: 7 }}>
-            <Image
-              source={require("../assets/profile.jpeg")}
-              style={{
-                width: 50,
-                height: 50,
-                resizeMode: "cover",
-                borderRadius: 25,
-              }}
-            />
-            <View style={{}}>
-              <Text
-                style={{
-                  color: "#41DDFF",
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  top: -4,
-                }}
-              >
-                @Peachys
-              </Text>
-              <Text
-                style={{
-                  fontWeight: "400",
-                  color: "#9F9F9F",
-                  fontSize: 15,
-                }}
-              >
-                Karabo Mashabela
-              </Text>
-            </View>
-          </View>
-          <View>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Entypo name="location-pin" size={18} color="#9B0E10" />
-              <Text style={{ color: "#9F9F9F", fontWeight: "500" }}>
-                Pretoria
-              </Text>
-            </View>
-            <View style={{ marginTop: 15 }}>
-              <Pressable
-                style={{
-                  backgroundColor: "#9B0E10",
-                  borderRadius: 4,
-                  padding: 3,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontWeight: "600",
-                    fontSize: 13,
-                    textAlign: "center",
-                  }}
-                >
-                  Follow
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#fff",
-            padding: 4,
-            marginBottom: 10,
-            borderRadius: 6,
-          }}
-        >
-          <View style={{ flexDirection: "row", gap: 7 }}>
-            <Image
-              source={require("../assets/profile.jpeg")}
-              style={{
-                width: 50,
-                height: 50,
-                resizeMode: "cover",
-                borderRadius: 25,
-              }}
-            />
-            <View style={{}}>
-              <Text
-                style={{
-                  color: "#41DDFF",
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  top: -4,
-                }}
-              >
-                @Peachys
-              </Text>
-              <Text
-                style={{
-                  fontWeight: "400",
-                  color: "#9F9F9F",
-                  fontSize: 15,
-                }}
-              >
-                Karabo Mashabela
-              </Text>
-            </View>
-          </View>
-          <View>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Entypo name="location-pin" size={18} color="#9B0E10" />
-              <Text style={{ color: "#9F9F9F", fontWeight: "500" }}>
-                Pretoria
-              </Text>
-            </View>
-            <View style={{ marginTop: 15 }}>
-              <Pressable
-                style={{
-                  backgroundColor: "#9B0E10",
-                  borderRadius: 4,
-                  padding: 3,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontWeight: "600",
-                    fontSize: 13,
-                    textAlign: "center",
-                  }}
-                >
-                  Follow
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#fff",
-            padding: 4,
-            marginBottom: 10,
-            borderRadius: 6,
-          }}
-        >
-          <View style={{ flexDirection: "row", gap: 7 }}>
-            <Image
-              source={require("../assets/profile.jpeg")}
-              style={{
-                width: 50,
-                height: 50,
-                resizeMode: "cover",
-                borderRadius: 25,
-              }}
-            />
-            <View style={{}}>
-              <Text
-                style={{
-                  color: "#41DDFF",
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  top: -4,
-                }}
-              >
-                @Peachys
-              </Text>
-              <Text
-                style={{
-                  fontWeight: "400",
-                  color: "#9F9F9F",
-                  fontSize: 15,
-                }}
-              >
-                Karabo Mashabela
-              </Text>
-            </View>
-          </View>
-          <View>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Entypo name="location-pin" size={18} color="#9B0E10" />
-              <Text style={{ color: "#9F9F9F", fontWeight: "500" }}>
-                Pretoria
-              </Text>
-            </View>
-            <View style={{ marginTop: 15 }}>
-              <Pressable
-                style={{
-                  backgroundColor: "#9B0E10",
-                  borderRadius: 4,
-                  padding: 3,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontWeight: "600",
-                    fontSize: 13,
-                    textAlign: "center",
-                  }}
-                >
-                  Follow
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#fff",
-            padding: 4,
-            marginBottom: 10,
-            borderRadius: 6,
-          }}
-        >
-          <View style={{ flexDirection: "row", gap: 7 }}>
-            <Image
-              source={require("../assets/profile.jpeg")}
-              style={{
-                width: 50,
-                height: 50,
-                resizeMode: "cover",
-                borderRadius: 25,
-              }}
-            />
-            <View style={{}}>
-              <Text
-                style={{
-                  color: "#41DDFF",
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  top: -4,
-                }}
-              >
-                @Peachys
-              </Text>
-              <Text
-                style={{
-                  fontWeight: "400",
-                  color: "#9F9F9F",
-                  fontSize: 15,
-                }}
-              >
-                Karabo Mashabela
-              </Text>
-            </View>
-          </View>
-          <View>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Entypo name="location-pin" size={18} color="#9B0E10" />
-              <Text style={{ color: "#9F9F9F", fontWeight: "500" }}>
-                Pretoria
-              </Text>
-            </View>
-            <View style={{ marginTop: 15 }}>
-              <Pressable
-                style={{
-                  backgroundColor: "#9F9F9F",
-                  borderRadius: 4,
-                  padding: 3,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontWeight: "600",
-                    fontSize: 13,
-                    textAlign: "center",
-                  }}
-                >
-                  Following
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#fff",
-            padding: 4,
-            marginBottom: 10,
-            borderRadius: 6,
-          }}
-        >
-          <View style={{ flexDirection: "row", gap: 7 }}>
-            <Image
-              source={require("../assets/profile.jpeg")}
-              style={{
-                width: 50,
-                height: 50,
-                resizeMode: "cover",
-                borderRadius: 25,
-              }}
-            />
-            <View style={{}}>
-              <Text
-                style={{
-                  color: "#41DDFF",
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  top: -4,
-                }}
-              >
-                @Peachys
-              </Text>
-              <Text
-                style={{
-                  fontWeight: "400",
-                  color: "#9F9F9F",
-                  fontSize: 15,
-                }}
-              >
-                Karabo Mashabela
-              </Text>
-            </View>
-          </View>
-          <View>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Entypo name="location-pin" size={18} color="#9B0E10" />
-              <Text style={{ color: "#9F9F9F", fontWeight: "500" }}>
-                Pretoria
-              </Text>
-            </View>
-            <View style={{ marginTop: 15 }}>
-              <Pressable
-                style={{
-                  backgroundColor: "#9B0E10",
-                  borderRadius: 4,
-                  padding: 3,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontWeight: "600",
-                    fontSize: 13,
-                    textAlign: "center",
-                  }}
-                >
-                  Follow
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            backgroundColor: "#fff",
-            padding: 4,
-            marginBottom: 10,
-            borderRadius: 6,
-          }}
-        >
-          <View style={{ flexDirection: "row", gap: 7 }}>
-            <Image
-              source={require("../assets/profile.jpeg")}
-              style={{
-                width: 50,
-                height: 50,
-                resizeMode: "cover",
-                borderRadius: 25,
-              }}
-            />
-            <View style={{}}>
-              <Text
-                style={{
-                  color: "#41DDFF",
-                  fontSize: 18,
-                  fontWeight: "bold",
-                  top: -4,
-                }}
-              >
-                @Peachys
-              </Text>
-              <Text
-                style={{
-                  fontWeight: "400",
-                  color: "#9F9F9F",
-                  fontSize: 15,
-                }}
-              >
-                Karabo Mashabela
-              </Text>
-            </View>
-          </View>
-          <View>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Entypo name="location-pin" size={18} color="#9B0E10" />
-              <Text style={{ color: "#9F9F9F", fontWeight: "500" }}>
-                Pretoria
-              </Text>
-            </View>
-            <View style={{ marginTop: 15 }}>
-              <Pressable
-                style={{
-                  backgroundColor: "#9F9F9F",
-                  borderRadius: 4,
-                  padding: 3,
-                }}
-              >
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontWeight: "600",
-                    fontSize: 13,
-                    textAlign: "center",
-                  }}
-                >
-                  Following
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -542,5 +106,55 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8F8F8",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: 7,
+    marginBottom: 20,
+    marginTop: 10,
+  },
+  backButton: {
+    backgroundColor: "#9B0E10",
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  logo: {
+    width: 50,
+    height: 50,
+    resizeMode: "contain",
+    borderRadius: 25,
+  },
+  searchContainer: {
+    paddingHorizontal: 12,
+    marginBottom: 10,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 4,
+    borderColor: "#9F9F9F",
+    backgroundColor: "#fff",
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+  },
+  resultsContainer: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  resultsText: {
+    textAlign: "center",
+    marginTop: 20,
+    fontSize: 16,
+    marginBottom: 10,
+    fontWeight: "bold",
   },
 });

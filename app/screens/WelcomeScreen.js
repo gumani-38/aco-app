@@ -8,11 +8,16 @@ import {
   Text,
   View,
 } from "react-native";
-import React from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const WelcomeScreen = () => {
   const navigation = useNavigation();
+  const handleBtnClick = () => {
+    AsyncStorage.setItem("authToken", "true");
+    navigation.navigate("Login");
+  };
   return (
     <SafeAreaView style={styles.container}>
       <View style={{ flex: 1, justifyContent: "space-between" }}>
@@ -29,7 +34,7 @@ const WelcomeScreen = () => {
           />
         </View>
         <Pressable
-          onPress={() => navigation.navigate("Login")}
+          onPress={handleBtnClick}
           style={{
             backgroundColor: "#9B0E10",
             borderRadius: 4,

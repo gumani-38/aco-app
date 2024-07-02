@@ -13,10 +13,14 @@ import {
 } from "react-native";
 import React, { useRef, useState } from "react";
 import { Entypo, Feather, Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { Try } from "expo-router/build/views/Try";
+import { supabase } from "../utils/supabase";
 
 const ForgotVerifyScreen = () => {
   const navigation = useNavigation();
+  const { userId, email } = useRoute().params;
+  const [errMessage, setErrMessage] = useState("");
   const [otp, setOtp] = useState(new Array(4).fill(""));
   const inputs = useRef([]);
 
@@ -48,7 +52,30 @@ const ForgotVerifyScreen = () => {
       });
     }
   };
-
+  const handleVerifyClick = async () => {
+    try {
+      if (otp.length != 4) {
+        console.log(otp.length);
+        setErrMessage("code must be 4 digits");
+        return;
+      }
+      setErrMessage("");
+      const token = otp.join("");
+      const { data, error } = await supabase
+        .from("tokens")
+        .select("*")
+        .eq("user", userId)
+        .eq("token", token)
+        .single();
+      if (error) {
+        setErrMessage("Invalide code !!");
+        return;
+      }
+      navigation.navigate("ResetPassword", { userId: userId, email: email });
+    } catch (error) {
+      console.log("error message verifying code : ", error.message);
+    }
+  };
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -62,7 +89,7 @@ const ForgotVerifyScreen = () => {
           }}
         >
           <View>
-            <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons
                 style={{ color: "#9B0E10" }}
                 name="chevron-back"
@@ -96,8 +123,13 @@ const ForgotVerifyScreen = () => {
                 color: "#9F9F9F",
               }}
             >
-              Enter code received on your email: karabo27@gmail.com
+              Enter code received on your email: {email}
             </Text>
+            {errMessage && (
+              <Text style={{ color: "red", textAlign: "center" }}>
+                {errMessage}
+              </Text>
+            )}
           </View>
           <View
             style={{
@@ -146,7 +178,7 @@ const ForgotVerifyScreen = () => {
               borderRadius: 4,
               marginTop: 15,
             }}
-            onPress={() => navigation.navigate("Login")}
+            onPress={handleVerifyClick}
           >
             <Text
               style={{

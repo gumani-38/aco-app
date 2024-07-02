@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "africa-connect-online",
-    "slug": "africa-connect-online",
+    "name": "aco-app-push",
+    "slug": "aco-app-push",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./app/assets/icon.png",
@@ -9,17 +9,21 @@
     "splash": {
       "image": "./app/assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#001138"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourcompany.acoapp",
+      "associatedDomains": ["applinks:yourapp.com"]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app/assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": ["android.permission.RECORD_AUDIO"],
+      "package": "com.yourcompany.acoapp"
     },
     "web": {
       "favicon": "./app/assets/favicon.png"
@@ -32,6 +36,16 @@
         }
       ],
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "74ce76a1-7f22-47e0-90ef-43cf54ffd5cb"
+      }
+    },
+    "owner": "gumza-28",
+    "scheme": "acoapp"
   }
 }

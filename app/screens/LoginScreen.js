@@ -1,24 +1,29 @@
 import {
   Image,
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import * as Animatable from "react-native-animatable";
-import { Entypo, Feather } from "@expo/vector-icons";
+import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-
+import { supabase } from "../utils/supabase";
+import ProgressBar from "../components/ProgressBar";
+import SuccessAlert from "../components/SuccessAlert";
 const LoginScreen = () => {
-  const [isChecked, setChecked] = useState(false);
   const navigation = useNavigation();
 
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [userId, setUserId] = useState("");
   const [data, setData] = useState({
     email: "",
     password: "",
@@ -26,7 +31,22 @@ const LoginScreen = () => {
     secureTextEntry: true,
     isValidUser: true,
   });
-
+  useEffect(() => {
+    getUser();
+    if (userId) {
+      getUserProfile();
+    }
+  }, []);
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
+  const getUserProfile = async () => {
+    navigation.replace("Main");
+    return;
+  };
   const textInputChange = (val) => {
     if (val.trim().length >= 4) {
       setData({
@@ -58,88 +78,126 @@ const LoginScreen = () => {
       secureTextEntry: !data.secureTextEntry,
     });
   };
+  const handleLoginClick = async () => {
+    const { email, password } = data;
+    if (!email && !password) {
+      return;
+    }
+
+    setLoading(true);
+
+    const progressInterval = setInterval(() => {
+      setProgress((prevProgress) => {
+        if (prevProgress >= 1) {
+          clearInterval(progressInterval);
+          return 1;
+        }
+        return prevProgress + 0.1;
+      });
+    }, 100);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) throw error;
+      setTimeout(() => {
+        setLoading(false);
+        setProgress(0);
+        setShowSuccess(true);
+        setTimeout(() => {
+          navigation.navigate("Main");
+          setShowSuccess(false);
+        }, 300);
+      }, 2000);
+    } catch (error) {
+      console.error("Error logging in:", error.message);
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} style={{ padding: 10 }}>
-        <Animatable.View style={{ marginTop: 20 }}>
-          <View style={{ alignItems: "center" }}>
-            <Image
-              source={require("../assets/aco-logo.png")}
-              style={{ width: 150, height: 150, resizeMode: "contain" }}
-            />
-          </View>
-
-          <View>
-            <Text style={styles.loginText}>Login</Text>
-            <Text style={styles.Enteryouremail}>Enter your email</Text>
-
-            <TextInput
-              style={styles.EmailBox}
-              placeholder="Enter your email"
-              keyboardType="email-address"
-              onChangeText={(val) => textInputChange(val)}
-            />
-
-            {data.check_textInputChange ? (
-              <Animatable.View animation="bounceIn">
-                <Feather
-                  style={styles.Emailicon}
-                  name="check-circle"
-                  size={20}
-                  color="green"
-                />
-              </Animatable.View>
-            ) : null}
-          </View>
-
-          <View>
-            <Text style={styles.Enteryourpassword}>Enter your password</Text>
-
-            <TextInput
-              style={styles.PasswordBox}
-              secureTextEntry={data.secureTextEntry}
-              placeholder="Enter your password"
-              onChangeText={(val) => handlePasswordChange(val)}
-            />
-
-            <TouchableOpacity onPress={updateSecureTextEntry}>
-              <Feather
-                style={styles.Passwordicon}
-                name={data.secureTextEntry ? "eye-off" : "eye"}
-                size={20}
-                color="green"
+    <>
+      <SafeAreaView style={styles.container}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          style={{ padding: 10 }}
+        >
+          <Animatable.View style={{ marginTop: 20 }}>
+            <View style={{ alignItems: "center" }}>
+              <Image
+                source={require("../assets/aco-logo.png")}
+                style={{ width: 150, height: 150, resizeMode: "contain" }}
               />
-            </TouchableOpacity>
-          </View>
+            </View>
 
-          <TouchableOpacity onPress={() => navigation.navigate("Forgot")}>
-            <Text style={styles.Forgotpassword}>Forgot Password?</Text>
-          </TouchableOpacity>
+            <View>
+              <Text style={styles.loginText}>Login</Text>
+              <Text style={styles.Enteryouremail}>Enter your email</Text>
 
-          <View>
-            <TouchableOpacity
-              style={styles.LoginButton}
-              onPress={() => navigation.navigate("Setup")}
-            >
-              <Text style={styles.LoginText}>Login</Text>
-            </TouchableOpacity>
-          </View>
+              <TextInput
+                style={styles.EmailBox}
+                placeholder="Enter your email"
+                keyboardType="email-address"
+                onChangeText={(val) => textInputChange(val)}
+              />
 
-          <View style={{ alignSelf: "center" }}>
-            <Text style={styles.Dontaccount}>Don't have an account? </Text>
+              {data.check_textInputChange ? (
+                <Animatable.View animation="bounceIn">
+                  <Feather
+                    style={styles.Emailicon}
+                    name="check-circle"
+                    size={20}
+                    color="green"
+                  />
+                </Animatable.View>
+              ) : null}
+            </View>
 
-            <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-              <Text style={styles.Signup}> Signup</Text>
-            </TouchableOpacity>
-          </View>
+            <View>
+              <Text style={styles.Enteryourpassword}>Enter your password</Text>
 
-          <View></View>
+              <TextInput
+                style={styles.PasswordBox}
+                secureTextEntry={data.secureTextEntry}
+                placeholder="Enter your password"
+                onChangeText={(val) => handlePasswordChange(val)}
+              />
 
-          <View></View>
-        </Animatable.View>
-      </ScrollView>
-    </SafeAreaView>
+              <Pressable onPress={updateSecureTextEntry}>
+                <Feather
+                  style={styles.Passwordicon}
+                  name={data.secureTextEntry ? "eye-off" : "eye"}
+                  size={20}
+                  color="gray"
+                />
+              </Pressable>
+            </View>
+
+            <Pressable onPress={() => navigation.navigate("Forgot")}>
+              <Text style={styles.Forgotpassword}>Forgot Password?</Text>
+            </Pressable>
+
+            <View>
+              <Pressable style={styles.LoginButton} onPress={handleLoginClick}>
+                <Text style={styles.LoginText}>Login</Text>
+              </Pressable>
+            </View>
+
+            <View style={{ alignSelf: "center" }}>
+              <Text style={styles.Dontaccount}>Don't have an account? </Text>
+
+              <Pressable onPress={() => navigation.navigate("Register")}>
+                <Text style={styles.Signup}> Signup</Text>
+              </Pressable>
+            </View>
+          </Animatable.View>
+        </ScrollView>
+      </SafeAreaView>
+      {loading && <ProgressBar process={progress} />}
+      {showSuccess && <SuccessAlert />}
+    </>
   );
 };
 

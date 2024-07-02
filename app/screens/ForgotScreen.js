@@ -12,10 +12,11 @@ import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import * as Animatable from "react-native-animatable";
 import { Entypo, Feather, Ionicons } from "@expo/vector-icons";
+import { supabase } from "../utils/supabase";
 
 const ForgotScreen = () => {
   const navigation = useNavigation();
-  const [data, setData] = useState({
+  const [emailVal, setEmailVal] = useState({
     email: "",
     check_textInputChange: false,
     isValidUser: true,
@@ -23,19 +24,81 @@ const ForgotScreen = () => {
 
   const textInputChange = (val) => {
     if (val.trim().length >= 4) {
-      setData({
-        ...data,
+      setEmailVal({
+        ...emailVal,
         email: val,
         check_textInputChange: true,
         isValidUser: true,
       });
     } else {
-      setData({
-        ...data,
+      setEmailVal({
+        ...emailVal,
         email: val,
         check_textInputChange: false,
         isValidUser: false,
       });
+    }
+  };
+  function generateToken() {
+    return Math.floor(1000 + Math.random() * 9000);
+  }
+  const validateToken = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from("tokens")
+        .select("*")
+        .eq("user", userId)
+        .single();
+      if (error) {
+        throw error;
+      }
+      if (data) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {}
+  };
+  const insertToken = async (userId, email) => {
+    const token = generateToken();
+    try {
+      if (validateToken(userId)) {
+        navigation.navigate("ForgotVerify", { userId: userId, email: email });
+      } else {
+        const { error } = await supabase
+          .from("tokens")
+          .insert({
+            user: userId,
+            token: token,
+          })
+          .single();
+        if (error) {
+          throw error;
+        }
+        console.log("Token inserted successfully");
+        navigation.navigate("ForgotVerify", { userId: userId, email: email });
+      }
+    } catch (error) {
+      console.log("error while inserting token : ", error.message);
+    }
+  };
+  const handleForgotPassword = async () => {
+    try {
+      if (!emailVal.email.includes("@")) {
+        setEmailVal({ ...emailVal, isValidUser: false });
+        return;
+      }
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .ilike("email", emailVal.email)
+        .single();
+      if (error) {
+        throw error;
+      }
+      insertToken(data.id, data.email);
+    } catch (error) {
+      console.log("error while getting the user : ", error.message);
     }
   };
 
@@ -52,7 +115,7 @@ const ForgotScreen = () => {
           }}
         >
           <View>
-            <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+            <TouchableOpacity onPress={() => navigation.goBack()}>
               <Ionicons
                 style={styles.backArrow}
                 name="chevron-back"
@@ -73,7 +136,7 @@ const ForgotScreen = () => {
             onChangeText={(val) => textInputChange(val)}
           />
 
-          {data.check_textInputChange ? (
+          {emailVal.check_textInputChange ? (
             <Animatable.View animation="bounceIn">
               <Feather
                 style={styles.emailIcon}
@@ -88,7 +151,7 @@ const ForgotScreen = () => {
         <View>
           <TouchableOpacity
             style={styles.LoginButton}
-            onPress={() => navigation.navigate("ForgotVerify")}
+            onPress={handleForgotPassword}
           >
             <Text style={styles.LoginText}>Submit</Text>
           </TouchableOpacity>

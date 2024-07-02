@@ -1,49 +1,46 @@
-import React, { useState, useEffect, useCallback, useContext } from "react";
-import { View, FlatList, StyleSheet, RefreshControl } from "react-native";
+import {
+  FlatList,
+  Image,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useContext, useEffect, useState } from "react";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import CommentBottomSheet from "../components/CommentBottomSheet";
+import { AuthContext } from "../context/AuthContext";
+import { Entypo } from "@expo/vector-icons";
 import { supabase } from "../utils/supabase";
 import Feed from "../components/Feed";
-import { AuthContext } from "../context/AuthContext";
-import CommentBottomSheet from "../components/CommentBottomSheet";
-import { useFocusEffect } from "@react-navigation/native";
-import PushNotification from "../components/PushNotification";
 
-const FeedScreen = () => {
+const ViewPostScreen = () => {
   const { userId } = useContext(AuthContext);
   const [isVisible, setIsVisible] = useState(false);
   const [postCommentId, setPostCommentId] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    params: { postId },
+  } = useRoute();
+  const navigation = useNavigation();
   const [posts, setPosts] = useState([]);
 
-  useFocusEffect(
-    useCallback(() => {
-      getFeed();
-      const allChangesSubscription = supabase
-        .channel("public:*")
-        .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
-          getFeed();
-        })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(allChangesSubscription);
-      };
-    }, [])
-  );
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    getFeed().then(() => setRefreshing(false));
+  useEffect(() => {
+    getFeed();
   }, []);
-
   const getFeed = async () => {
     try {
       const { data, error } = await supabase
         .from("posts")
         .select(
           `
-          *,
-          profiles (id,username,photo)
-          `
+              *,
+              profiles (id,username,photo)
+              `
         )
+        .eq("id", postId)
         .order("created_at", { ascending: false });
       if (error) {
         throw error;
@@ -107,7 +104,6 @@ const FeedScreen = () => {
   const handleCloseModal = () => {
     setIsVisible(false);
   };
-
   const renderItem = ({ item }) => (
     <Feed
       key={item.id}
@@ -120,18 +116,47 @@ const FeedScreen = () => {
 
   return (
     <>
-      <PushNotification />
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: 7,
+            marginBottom: 40,
+          }}
+        >
+          <Pressable onPress={() => navigation.goBack()}>
+            <View
+              style={{
+                backgroundColor: "#9B0E10",
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Entypo name="chevron-left" size={24} color="white" />
+            </View>
+          </Pressable>
+          <Image
+            source={require("../assets/aco-logo.png")}
+            style={{
+              width: 50,
+              height: 50,
+              resizeMode: "contain",
+              borderRadius: 25,
+            }}
+          />
+        </View>
         <FlatList
           data={posts}
           renderItem={renderItem}
           keyExtractor={(item) => item.id.toString()}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
           contentContainerStyle={{ paddingBottom: 20 }}
         />
-      </View>
+      </SafeAreaView>
       <CommentBottomSheet
         isVisible={isVisible}
         postId={postCommentId}
@@ -141,11 +166,12 @@ const FeedScreen = () => {
   );
 };
 
-export default FeedScreen;
+export default ViewPostScreen;
 
 const styles = StyleSheet.create({
   container: {
-    padding: 4,
     flex: 1,
+    backgroundColor: "#F8F8F8",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
 });

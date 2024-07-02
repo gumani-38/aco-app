@@ -1,13 +1,13 @@
-import { View, Text, Pressable, Image } from "react-native";
-import React from "react";
+import React, { useContext, useEffect, useState } from "react";
+import { View, Image, Pressable } from "react-native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import UploadPostScreen from "../screens/UploadPostScreen";
 import ProfileScreen from "../screens/ProfileScreen";
+import * as Linking from "expo-linking";
 import { FontAwesome, Feather, FontAwesome5 } from "@expo/vector-icons";
 import { NavigationContainer, useNavigation } from "@react-navigation/native";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import NotificationScreen from "../screens/NotificationScreen";
 import GroupScreen from "../screens/GroupScreen";
 import FeedScreen from "../screens/FeedScreen";
@@ -16,18 +16,43 @@ import SearchScreen from "../screens/SearchScreen";
 import ViewGroupScreen from "../screens/ViewGroupScreen";
 import ViewProfileScreen from "../screens/ViewProfileScreen";
 import AddGroupScreen from "../screens/AddGroupScreen";
-import ViewHeadline from "../screens/ViewHeadline";
 import WelcomeScreen from "../screens/WelcomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import TermsScreen from "../screens/TermsScreen";
 import ForgotScreen from "../screens/ForgotScreen";
 import ForgotVerifyScreen from "../screens/ForgotVerifyScreen";
+import MyPostScreen from "../screens/MyPostScreen";
+import UpdatePostScreen from "../screens/UpdatePostScreen";
+import VerifyAccountScreen from "../screens/VerifyAccountScreen";
+import ResetPasswordScreen from "../screens/ResetPasswordScreen";
+import { supabase } from "../utils/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const StackNavigation = () => {
   const Stack = createStackNavigator();
   const Tab = createBottomTabNavigator();
   const TopTabs = createMaterialTopTabNavigator();
+  const [userId, setUserId] = useState(null);
+  const [token, setToken] = useState(null);
+  useEffect(() => {
+    getUser();
+    checkAppInstalled();
+  }, []);
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
+  const checkAppInstalled = async () => {
+    try {
+      const token = await AsyncStorage.getItem("authToken");
+      setToken(token);
+    } catch (error) {
+      console.log("error message : ", error.message);
+    }
+  };
 
   function TopTabsGroup() {
     return (
@@ -64,7 +89,7 @@ const StackNavigation = () => {
           name="Africa Connect Online"
           component={TopTabsGroup}
           options={{
-            headerLeft: () => (
+            headerRight: () => (
               <Pressable
                 onPress={() => navigation.navigate("Search")}
                 style={{
@@ -80,7 +105,7 @@ const StackNavigation = () => {
                 <FontAwesome name="search" size={24} color="white" />
               </Pressable>
             ),
-            headerRight: () => (
+            headerLeft: () => (
               <Image
                 source={require("../assets/aco-logo.png")}
                 style={{
@@ -139,36 +164,62 @@ const StackNavigation = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShadowVisible: false }}>
-        <Stack.Screen
-          name="Welcome"
-          component={WelcomeScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Register"
-          component={RegisterScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Terms"
-          component={TermsScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Forgot"
-          component={ForgotScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="ForgotVerify"
-          component={ForgotVerifyScreen}
-          options={{ headerShown: false }}
-        />
+        {!token && (
+          <Stack.Screen
+            name="Welcome"
+            component={WelcomeScreen}
+            options={{ headerShown: false }}
+          />
+        )}
+        {!userId && (
+          <Stack.Screen
+            name="Login"
+            component={LoginScreen}
+            options={{ headerShown: false }}
+          />
+        )}
+        {!userId && (
+          <Stack.Screen
+            name="Register"
+            component={RegisterScreen}
+            options={{ headerShown: false }}
+          />
+        )}
+        {!userId && (
+          <Stack.Screen
+            name="Terms"
+            component={TermsScreen}
+            options={{ headerShown: false }}
+          />
+        )}
+        {!userId && (
+          <Stack.Screen
+            name="Forgot"
+            component={ForgotScreen}
+            options={{ headerShown: false }}
+          />
+        )}
+        {!userId && (
+          <Stack.Screen
+            name="VerifyAccount"
+            component={VerifyAccountScreen}
+            options={{ headerShown: false }}
+          />
+        )}
+        {!userId && (
+          <Stack.Screen
+            name="ForgotVerify"
+            component={ForgotVerifyScreen}
+            options={{ headerShown: false }}
+          />
+        )}
+        {!userId && (
+          <Stack.Screen
+            name="ResetPassword"
+            component={ResetPasswordScreen}
+            options={{ headerShown: false }}
+          />
+        )}
         <Stack.Screen
           name="Setup"
           component={ProfileSetUpScreen}
@@ -195,13 +246,24 @@ const StackNavigation = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen
-          name="AddGroup"
-          component={AddGroupScreen}
+          name="ViewPost"
+          component={ViewProfileScreen}
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="MyPost"
+          component={MyPostScreen}
           options={{ headerShown: false }}
         />
         <Stack.Screen
-          name="ViewHeadline"
-          component={ViewHeadline}
+          name="UpdatePost"
+          component={UpdatePostScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AddGroup"
+          component={AddGroupScreen}
           options={{ headerShown: false }}
         />
       </Stack.Navigator>
