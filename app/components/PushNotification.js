@@ -3,7 +3,7 @@ import { Text, View, Button, Platform } from "react-native";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
-import { AuthContext } from "../context/AuthContext";
+
 import { supabase } from "../utils/supabase";
 
 Notifications.setNotificationHandler({
@@ -100,12 +100,19 @@ async function sendTokenToSupabase(userId, token) {
 
 export default function App() {
   const [expoPushToken, setExpoPushToken] = useState("");
-  const { userId } = useContext(AuthContext);
+  const [userId, setUserId] = useState("");
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
   const [notification, setNotification] = useState(undefined);
   const notificationListener = useRef();
   const responseListener = useRef();
 
   useEffect(() => {
+    getUser();
     registerForPushNotificationsAsync()
       .then((token) => {
         setExpoPushToken(token ?? "");

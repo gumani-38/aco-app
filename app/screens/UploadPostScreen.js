@@ -21,7 +21,6 @@ import { supabase } from "../utils/supabase";
 import ProgressBar from "../components/ProgressBar";
 import SuccessAlert from "../components/SuccessAlert";
 import { useNavigation } from "@react-navigation/native";
-import { AuthContext } from "../context/AuthContext";
 
 const UploadPostScreen = () => {
   const [medias, setMedias] = useState([]);

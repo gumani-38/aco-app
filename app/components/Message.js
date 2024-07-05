@@ -1,5 +1,4 @@
 import { useNavigation } from "@react-navigation/native";
-import { is } from "date-fns/locale/is";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 const Message = ({

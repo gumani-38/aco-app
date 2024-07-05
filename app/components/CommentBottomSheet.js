@@ -17,7 +17,6 @@ import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
 import { decode } from "base64-arraybuffer";
 import { supabase } from "../utils/supabase";
-import { AuthContext } from "../context/AuthContext";
 
 const CommentBottomSheet = ({ isVisible, handleCloseModal, postId }) => {
   const [comments, setComments] = useState([]);

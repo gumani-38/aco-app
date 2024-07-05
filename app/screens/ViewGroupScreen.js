@@ -35,7 +35,6 @@ import { WebView } from "react-native-webview";
 import { supabase } from "../utils/supabase";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import Message from "../components/Message";
-import { AuthContext } from "../context/AuthContext";
 
 const { height } = Dimensions.get("window");
 

@@ -22,14 +22,13 @@ import * as FileSystem from "expo-file-system";
 import { decode } from "base64-arraybuffer";
 import ProgressBar from "../components/ProgressBar";
 import SuccessAlert from "../components/SuccessAlert";
-import { AuthContext } from "../context/AuthContext";
 
 const ProfileSetUpScreen = () => {
   const navigation = useNavigation();
   const [date, setDate] = useState(new Date());
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState("");
-  const { userId } = useContext(AuthContext);
+  const [userId, setUserId] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [usernameErr, setUsernameErr] = useState(false);
@@ -41,11 +40,17 @@ const ProfileSetUpScreen = () => {
   const [progress, setProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
   useEffect(() => {
+    getUser();
     if (userId) {
       getUserProfile();
     }
   }, [userId]);
-
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
   const getUserProfile = async () => {
     const { data, error } = await supabase
       .from("profiles")

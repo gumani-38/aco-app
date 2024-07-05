@@ -14,7 +14,6 @@ import {
 import React, { useRef, useState } from "react";
 import { Entypo, Feather, Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { Try } from "expo-router/build/views/Try";
 import { supabase } from "../utils/supabase";
 
 const ForgotVerifyScreen = () => {
