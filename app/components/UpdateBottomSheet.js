@@ -265,26 +265,28 @@ const UpdateBottomSheet = ({
                         {errMessage}
                       </Text>
                     )}
-                    <Pressable
-                      onPress={handleUpdateBio}
-                      style={{
-                        backgroundColor: "#9B0E10",
-                        borderRadius: 4,
-                        padding: 10,
-                        marginBottom: 20,
-                      }}
-                    >
-                      <Text
+                    {edtBio && (
+                      <Pressable
+                        onPress={handleUpdateBio}
                         style={{
-                          fontSize: 16,
-                          fontWeight: "bold",
-                          color: "white",
-                          textAlign: "center",
+                          backgroundColor: "#9B0E10",
+                          borderRadius: 4,
+                          padding: 10,
+                          marginBottom: 20,
                         }}
                       >
-                        Update Bio
-                      </Text>
-                    </Pressable>
+                        <Text
+                          style={{
+                            fontSize: 16,
+                            fontWeight: "bold",
+                            color: "white",
+                            textAlign: "center",
+                          }}
+                        >
+                          Update Bio
+                        </Text>
+                      </Pressable>
+                    )}
                   </View>
                 </View>
               </ScrollView>

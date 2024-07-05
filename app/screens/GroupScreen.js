@@ -5,9 +5,16 @@ import { supabase } from "../utils/supabase";
 import { useFocusEffect } from "@react-navigation/native";
 
 const GroupScreen = () => {
-  const [userId, setUserId] = useState(null);
   const [group, setGroup] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [userId, setUserId] = useState("");
+
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -44,13 +51,6 @@ const GroupScreen = () => {
     } catch (error) {
       console.log(error);
     }
-  };
-
-  const getUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    setUserId(user.id);
   };
 
   const handleJoinClick = async (groupId) => {

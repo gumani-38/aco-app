@@ -50,19 +50,21 @@ const ForgotScreen = () => {
         .eq("user", userId)
         .single();
       if (error) {
-        throw error;
+        return false;
       }
       if (data) {
         return true;
-      } else {
-        return false;
       }
-    } catch (error) {}
+      return false;
+    } catch (error) {
+      console.log("error message setting token: ", error.message);
+    }
   };
   const insertToken = async (userId, email) => {
     const token = generateToken();
     try {
-      if (validateToken(userId)) {
+      const isFound = await validateToken(userId);
+      if (isFound) {
         navigation.navigate("ForgotVerify", { userId: userId, email: email });
       } else {
         const { error } = await supabase

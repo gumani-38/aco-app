@@ -25,7 +25,7 @@ import {
 import { Entypo } from "@expo/vector-icons";
 import { supabase } from "../utils/supabase";
 import ContactBottomSheet from "../components/ContactBottomSheet";
-import { AuthContext } from "../context/AuthContext";
+
 import MyJourney from "../components/MyJourney";
 
 const ViewProfileScreen = () => {
@@ -33,7 +33,6 @@ const ViewProfileScreen = () => {
   const [userProfile, setUserProfile] = useState("");
   const navigation = useNavigation();
   const bottomSheetModalRef = useRef(null);
-  const { userId } = useContext(AuthContext);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionId, setConnectionId] = useState(null);
   const [followers, setFollowers] = useState(null);
@@ -41,8 +40,17 @@ const ViewProfileScreen = () => {
   const [selectedTab, setSelectedTab] = useState("about");
   const [error, setError] = useState(false);
   const [contactMessage, setContactMessage] = useState(null);
+  const [userId, setUserId] = useState("");
+
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
   useFocusEffect(
     useCallback(() => {
+      getUser();
       getProfile();
       getFollowers();
       getFollowings();
@@ -142,9 +150,8 @@ const ViewProfileScreen = () => {
       if (error) {
         throw error;
       }
-      console.log("contact data : ", data);
       setContactMessage(null);
-      await sendPushNotification("ExponentPushToken[hnwUmjFZctmvwE9NJEQja8]");
+      await sendPushNotification(userProfile.expo_push_token);
     } catch (error) {
       console.log("while sending the contact message : ", error.message);
     }
@@ -326,7 +333,7 @@ const ViewProfileScreen = () => {
                   fontWeight: "500",
                 }}
               >
-                followers
+                connecting
               </Text>
             </View>
             <View

@@ -21,7 +21,6 @@ import ProgressBar from "../components/ProgressBar";
 import SuccessAlert from "../components/SuccessAlert";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { supabase } from "../utils/supabase";
-import { AuthContext } from "../context/AuthContext";
 
 const UpdatePostScreen = () => {
   const { postId } = useRoute().params;
@@ -30,13 +29,19 @@ const UpdatePostScreen = () => {
   const [caption, setCaption] = useState("");
   const [tags, setTags] = useState("");
   const [captionError, setCaptionError] = useState(false);
-  const { userId } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
   const navigation = useNavigation();
-
+  const [userId, setUserId] = useState("");
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
   useEffect(() => {
+    getUser();
     if (postId) {
       getPost();
       getMedia();

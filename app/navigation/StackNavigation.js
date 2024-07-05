@@ -26,25 +26,18 @@ import MyPostScreen from "../screens/MyPostScreen";
 import UpdatePostScreen from "../screens/UpdatePostScreen";
 import VerifyAccountScreen from "../screens/VerifyAccountScreen";
 import ResetPasswordScreen from "../screens/ResetPasswordScreen";
-import { supabase } from "../utils/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import ViewPostScreen from "../screens/ViewPostScreen";
 
 const StackNavigation = () => {
   const Stack = createStackNavigator();
   const Tab = createBottomTabNavigator();
   const TopTabs = createMaterialTopTabNavigator();
-  const [userId, setUserId] = useState(null);
   const [token, setToken] = useState(null);
   useEffect(() => {
-    getUser();
     checkAppInstalled();
   }, []);
-  const getUser = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    setUserId(user.id);
-  };
+
   const checkAppInstalled = async () => {
     try {
       const token = await AsyncStorage.getItem("authToken");
@@ -171,55 +164,49 @@ const StackNavigation = () => {
             options={{ headerShown: false }}
           />
         )}
-        {!userId && (
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-        )}
-        {!userId && (
-          <Stack.Screen
-            name="Register"
-            component={RegisterScreen}
-            options={{ headerShown: false }}
-          />
-        )}
-        {!userId && (
-          <Stack.Screen
-            name="Terms"
-            component={TermsScreen}
-            options={{ headerShown: false }}
-          />
-        )}
-        {!userId && (
-          <Stack.Screen
-            name="Forgot"
-            component={ForgotScreen}
-            options={{ headerShown: false }}
-          />
-        )}
-        {!userId && (
-          <Stack.Screen
-            name="VerifyAccount"
-            component={VerifyAccountScreen}
-            options={{ headerShown: false }}
-          />
-        )}
-        {!userId && (
-          <Stack.Screen
-            name="ForgotVerify"
-            component={ForgotVerifyScreen}
-            options={{ headerShown: false }}
-          />
-        )}
-        {!userId && (
-          <Stack.Screen
-            name="ResetPassword"
-            component={ResetPasswordScreen}
-            options={{ headerShown: false }}
-          />
-        )}
+
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="Register"
+          component={RegisterScreen}
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="Terms"
+          component={TermsScreen}
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="Forgot"
+          component={ForgotScreen}
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="VerifyAccount"
+          component={VerifyAccountScreen}
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="ForgotVerify"
+          component={ForgotVerifyScreen}
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name="ResetPassword"
+          component={ResetPasswordScreen}
+          options={{ headerShown: false }}
+        />
+
         <Stack.Screen
           name="Setup"
           component={ProfileSetUpScreen}
@@ -247,7 +234,7 @@ const StackNavigation = () => {
         />
         <Stack.Screen
           name="ViewPost"
-          component={ViewProfileScreen}
+          component={ViewPostScreen}
           options={{ headerShown: false }}
         />
 

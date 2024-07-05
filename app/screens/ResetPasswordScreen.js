@@ -14,7 +14,12 @@ import { useNavigation } from "@react-navigation/native";
 import * as Animatable from "react-native-animatable";
 import { Entypo, Feather, Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-import { supabase } from "../utils/supabase";
+const { createClient } = require("@supabase/supabase-js");
+
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.EXPO_PUBLIC_SUPABASE_SERVICES_ROLE;
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const ResetPasswordScreen = () => {
   const { userId, email } = useRoute().params;
@@ -27,8 +32,7 @@ const ResetPasswordScreen = () => {
         setError("Password must be at least 6 characters");
         return;
       }
-
-      const { data: user, error } = await supabase.auth.api.updateUserById(
+      const { data: user, error } = await supabase.auth.admin.updateUserById(
         userId,
         { password: password }
       );

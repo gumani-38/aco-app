@@ -22,13 +22,20 @@ import { AuthContext } from "../context/AuthContext";
 const CommentBottomSheet = ({ isVisible, handleCloseModal, postId }) => {
   const [comments, setComments] = useState([]);
   const [comment, setComment] = useState(null);
-  const { userId } = useContext(AuthContext);
   const [commentId, setCommentId] = useState(null);
   const [username, setUsername] = useState(null);
   const [postCaptions, setPostCaptions] = useState(null);
   const [authorToken, setAuthorToken] = useState(null);
   const commentInputRef = useRef(null);
+  const [userId, setUserId] = useState("");
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
   useEffect(() => {
+    getUser();
     if (postId) {
       setCommentId(null);
       setUsername(null);

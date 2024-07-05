@@ -2,17 +2,25 @@ import React, { useState, useEffect, useCallback, useContext } from "react";
 import { View, FlatList, StyleSheet, RefreshControl } from "react-native";
 import { supabase } from "../utils/supabase";
 import Feed from "../components/Feed";
-import { AuthContext } from "../context/AuthContext";
 import CommentBottomSheet from "../components/CommentBottomSheet";
 import { useFocusEffect } from "@react-navigation/native";
 import PushNotification from "../components/PushNotification";
 
 const FeedScreen = () => {
-  const { userId } = useContext(AuthContext);
   const [isVisible, setIsVisible] = useState(false);
   const [postCommentId, setPostCommentId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [posts, setPosts] = useState([]);
+  const [userId, setUserId] = useState("");
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
+  useEffect(() => {
+    getUser();
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -61,7 +69,7 @@ const FeedScreen = () => {
       } else {
         createConnection(profileId);
       }
-      getFeed();
+      await getFeed();
     } catch (error) {
       console.error("Error handling connect click:", error);
     }

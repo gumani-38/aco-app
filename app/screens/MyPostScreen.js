@@ -15,25 +15,31 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import Post from "../components/Post";
 import { useCallback, useContext, useEffect, useState } from "react";
 import { supabase } from "../utils/supabase";
-import { AuthContext } from "../context/AuthContext";
 
 const MyPostScreen = () => {
   const navigation = useNavigation();
-  const { userId } = useContext(AuthContext);
   const [postData, setPostData] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-
+  const [userId, setUserId] = useState("");
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     getUserPost();
     setRefreshing(false);
   }, []);
-
+  useEffect(() => {
+    getUser();
+    if (userId) {
+      getUserPost();
+    }
+  }, [userId]);
   useFocusEffect(
     useCallback(() => {
-      if (userId) {
-        getUserPost();
-      }
       const allChangesSubscription = supabase
         .channel("public:*")
         .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {

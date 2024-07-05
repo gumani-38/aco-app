@@ -33,9 +33,6 @@ const LoginScreen = () => {
   });
   useEffect(() => {
     getUser();
-    if (userId) {
-      getUserProfile();
-    }
   }, []);
   const getUser = async () => {
     const {
@@ -43,10 +40,10 @@ const LoginScreen = () => {
     } = await supabase.auth.getUser();
     setUserId(user.id);
   };
-  const getUserProfile = async () => {
+  if (userId) {
     navigation.replace("Main");
     return;
-  };
+  }
   const textInputChange = (val) => {
     if (val.trim().length >= 4) {
       setData({
@@ -102,7 +99,11 @@ const LoginScreen = () => {
         password: password,
       });
 
-      if (error) throw error;
+      if (error) {
+        setLoading(false);
+        setProgress(0);
+        throw error;
+      }
       setTimeout(() => {
         setLoading(false);
         setProgress(0);

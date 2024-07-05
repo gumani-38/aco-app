@@ -12,13 +12,11 @@ import {
 import { useContext, useEffect, useState } from "react";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import CommentBottomSheet from "../components/CommentBottomSheet";
-import { AuthContext } from "../context/AuthContext";
 import { Entypo } from "@expo/vector-icons";
 import { supabase } from "../utils/supabase";
 import Feed from "../components/Feed";
 
 const ViewPostScreen = () => {
-  const { userId } = useContext(AuthContext);
   const [isVisible, setIsVisible] = useState(false);
   const [postCommentId, setPostCommentId] = useState(null);
   const {
@@ -26,8 +24,16 @@ const ViewPostScreen = () => {
   } = useRoute();
   const navigation = useNavigation();
   const [posts, setPosts] = useState([]);
+  const [userId, setUserId] = useState("");
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
 
   useEffect(() => {
+    getUser();
     getFeed();
   }, []);
   const getFeed = async () => {

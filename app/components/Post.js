@@ -31,7 +31,7 @@ const Post = ({ item, handleDeletePost }) => {
         <Pressable
           onPress={() => navigation.navigate("UpdatePost", { postId: item.id })}
         >
-          <FontAwesome6 name="edit" size={14} color="#9B0E10" />
+          <FontAwesome6 name="edit" size={14} color="#41DDFF" />
         </Pressable>
         <Text style={{ textAlign: "right", fontSize: 13, color: "#9F9F9F" }}>
           {dateFormmater(item?.created_at)}
@@ -62,10 +62,16 @@ const Post = ({ item, handleDeletePost }) => {
       <View
         style={{
           flexDirection: "row",
-          justifyContent: "flex-end",
+          justifyContent: "space-between",
+          alignItems: "center",
           marginTop: 4,
         }}
       >
+        <Pressable
+          onPress={() => navigation.navigate("ViewPost", { postId: item.id })}
+        >
+          <Feather name="eye" size={16} color="#9B0E10" />
+        </Pressable>
         <Pressable onPress={() => handleDeletePost(item.id)}>
           <Feather name="trash-2" size={16} color="red" />
         </Pressable>

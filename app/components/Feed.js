@@ -11,6 +11,7 @@ const Feed = ({ item, userId, handleConnectClick, handlePresentModal }) => {
   const [isConnected, setIsConneted] = useState(false);
   const [connectionId, setConnectionId] = useState(null);
   const [tags, setTags] = useState([]);
+  const [commentCounts, setCommentCounts] = useState(0);
   const [liked, setLiked] = useState(false);
   const navigation = useNavigation();
 
@@ -105,6 +106,7 @@ const Feed = ({ item, userId, handleConnectClick, handlePresentModal }) => {
       getConnections();
       getTags();
       getIsLiked();
+      getComments();
       const allChangesSubscription = supabase
         .channel("public:*")
         .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
@@ -112,6 +114,7 @@ const Feed = ({ item, userId, handleConnectClick, handlePresentModal }) => {
           getConnections();
           getTags();
           getIsLiked();
+          getComments();
         })
         .subscribe();
 
@@ -120,6 +123,20 @@ const Feed = ({ item, userId, handleConnectClick, handlePresentModal }) => {
       };
     }, [])
   );
+  const getComments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("comments")
+        .select(`*, profiles (id,username,photo)`)
+        .eq("post", item.id);
+      if (error) {
+        throw error;
+      }
+      setCommentCounts(data.length);
+    } catch (error) {
+      console.log("error while getting comments :", error.message);
+    }
+  };
   const getLikeCount = async () => {
     try {
       const { data, error } = await supabase
@@ -206,16 +223,11 @@ const Feed = ({ item, userId, handleConnectClick, handlePresentModal }) => {
         </View>
         <View style={styles.meta}>
           <Text style={styles.timestamp}>{dateFormatter(item.created_at)}</Text>
-          {item?.profiles.id !== userId && (
+          {item?.profiles.id !== userId && isConnected && (
             <Pressable
-              style={[
-                styles.connectButton,
-                { backgroundColor: isConnected ? "#9F9F9F" : "#001138" },
-              ]}
+              style={[styles.connectButton, { backgroundColor: "#9F9F9F" }]}
             >
-              <Text style={styles.connectText}>
-                {isConnected ? "Connected" : "Connect"}
-              </Text>
+              <Text style={styles.connectText}>Connected</Text>
             </Pressable>
           )}
           {item?.profiles.id === userId && <Text style={styles.meTag}>Me</Text>}
@@ -244,6 +256,12 @@ const Feed = ({ item, userId, handleConnectClick, handlePresentModal }) => {
           onPress={() => handlePresentModal(item.id)}
           style={styles.actionButton}
         >
+          {commentCounts > 1 && (
+            <Text style={{ fontSize: 13, marginRight: 3 }}>
+              {" "}
+              {commentCounts}
+            </Text>
+          )}
           <FontAwesome name="commenting" size={20} color="#9F9F9F" />
           <Text style={styles.actionText}>Comments</Text>
         </Pressable>
@@ -284,7 +302,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    // Box shadow for Android
     elevation: 5,
   },
   header: {

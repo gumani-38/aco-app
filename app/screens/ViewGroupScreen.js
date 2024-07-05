@@ -42,7 +42,6 @@ const { height } = Dimensions.get("window");
 const ViewGroupScreen = () => {
   const { groupId } = useRoute().params;
   const [group, setGroup] = useState("");
-  const { userId } = useContext(AuthContext);
   const [userProfile, setUserProfile] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -50,9 +49,17 @@ const ViewGroupScreen = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [caption, setCaption] = useState("");
   const navigation = useNavigation();
+  const [userId, setUserId] = useState("");
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
 
   useFocusEffect(
     useCallback(() => {
+      getUser();
       if (groupId && userId) {
         getGroup();
         getUserProfile();

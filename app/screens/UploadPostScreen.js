@@ -28,21 +28,20 @@ const UploadPostScreen = () => {
   const [title, setTitle] = useState("");
   const [caption, setCaption] = useState("");
   const [captionError, setCaptionError] = useState(false);
-  const { userId } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
   const navigation = useNavigation();
-
   const [tags, setTags] = useState("");
+  const [userId, setUserId] = useState("");
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
 
   useEffect(() => {
-    const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      setUserId(user.id);
-    };
     getUser();
   }, []);
 
@@ -87,6 +86,8 @@ const UploadPostScreen = () => {
         .select();
 
       if (error) {
+        setLoading(false);
+        setProgress(0);
         throw error;
       }
       uploadTags(data[0].id);

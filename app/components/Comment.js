@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   commentText: {
     fontWeight: "300",
     fontSize: 10,
-    color: "#9F9F9F",
+    color: "black",
   },
   mediaButton: {
     flexDirection: "row",

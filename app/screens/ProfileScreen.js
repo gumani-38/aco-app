@@ -30,10 +30,8 @@ import { supabase } from "../utils/supabase";
 import * as FileSystem from "expo-file-system";
 import { decode } from "base64-arraybuffer";
 import UpdateBottomSheet from "../components/UpdateBottomSheet";
-import { AuthContext } from "../context/AuthContext";
 
 const ProfileScreen = () => {
-  const { userId, user } = useContext(AuthContext);
   const navigation = useNavigation();
   const [image, setImage] = useState(null);
   const bottomSheetModalRef = useRef(null);
@@ -41,14 +39,18 @@ const ProfileScreen = () => {
   const [followers, setFollowers] = useState(null);
   const [following, setFollowing] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
-
+  const [userId, setUserId] = useState("");
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    getUser();
+    if (userId) {
+      getUserProfile();
+      getFollowers();
+      getFollowings();
+    }
+  }, [userId]);
   useFocusEffect(
     useCallback(() => {
-      if (userId) {
-        getUserProfile();
-        getFollowers();
-        getFollowings();
-      }
       const allChangesSubscription = supabase
         .channel("public:*")
         .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {
@@ -63,6 +65,13 @@ const ProfileScreen = () => {
       };
     }, [])
   );
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUser(user.user_metadata);
+    setUserId(user.id);
+  };
   const getFollowers = async () => {
     try {
       const { data, error } = await supabase
@@ -389,7 +398,7 @@ const ProfileScreen = () => {
                     fontWeight: "500",
                   }}
                 >
-                  followers
+                  connecting
                 </Text>
               </View>
               <View

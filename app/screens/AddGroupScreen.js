@@ -20,20 +20,28 @@ import { supabase } from "../utils/supabase";
 import { err } from "react-native-svg";
 import ProgressBar from "../components/ProgressBar";
 import SuccessAlert from "../components/SuccessAlert";
-import { AuthContext } from "../context/AuthContext";
-import { sendPushNotification } from "../utils/sendNotifcation";
 
 const AddGroupScreen = () => {
   const navigation = useNavigation();
   const [banner, setBanner] = useState(null);
   const [image, setImage] = useState(null);
   const [name, setName] = useState(null);
-  const { userId } = useContext(AuthContext);
   const [errMessage, setErrMessage] = useState(null);
   const [description, setDescription] = useState(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
+
+  const [userId, setUserId] = useState("");
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
+  useEffect(() => {
+    getUser();
+  }, []);
 
   const pickBanner = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -191,7 +199,9 @@ const AddGroupScreen = () => {
         .single();
 
       if (error) {
-        console.log(error);
+        setLoading(false);
+        setProgress(0);
+        throw error;
       }
       addUserToGroup(data.id);
       sendMessage();

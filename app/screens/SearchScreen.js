@@ -15,13 +15,21 @@ import { FontAwesome, Entypo } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import UserCard from "../components/UserCard";
 import { supabase } from "../utils/supabase";
-import { AuthContext } from "../context/AuthContext";
 
 const SearchScreen = () => {
   const [results, setResults] = useState([]);
-  const { userId } = useContext(AuthContext);
   const navigation = useNavigation();
+  const [userId, setUserId] = useState("");
+  const getUser = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setUserId(user.id);
+  };
 
+  useEffect(() => {
+    getUser();
+  }, []);
   const handleSearchClick = async (text) => {
     try {
       const { data, error } = await supabase.from("profiles").select("*");
