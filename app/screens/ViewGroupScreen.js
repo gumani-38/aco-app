@@ -56,14 +56,16 @@ const ViewGroupScreen = () => {
     setUserId(user.id);
   };
 
+  useEffect(() => {
+    getUser();
+    if (groupId && userId) {
+      getGroup();
+      getUserProfile();
+      getMessages();
+    }
+  }, [userId]);
   useFocusEffect(
     useCallback(() => {
-      getUser();
-      if (groupId && userId) {
-        getGroup();
-        getUserProfile();
-        getMessages();
-      }
       const allChangesSubscription = supabase
         .channel("public:*")
         .on("postgres_changes", { event: "*", schema: "public" }, (payload) => {

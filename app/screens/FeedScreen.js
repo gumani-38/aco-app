@@ -138,6 +138,7 @@ const FeedScreen = () => {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
           contentContainerStyle={{ paddingBottom: 20 }}
+          showsVerticalScrollIndicator={false}
         />
       </View>
       <CommentBottomSheet

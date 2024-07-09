@@ -216,6 +216,7 @@ const MyPostScreen = () => {
         renderItem={({ item }) => (
           <Post item={item} handleDeletePost={handleDeletePost} />
         )}
+        showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
   );

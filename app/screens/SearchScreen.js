@@ -98,9 +98,11 @@ const SearchScreen = () => {
               lastName={item.lastName}
               profileId={item.id}
               userId={userId}
+
               // Add other relevant props from profile data
             />
           )}
+          showsVerticalScrollIndicator={false}
         />
       </View>
     </SafeAreaView>

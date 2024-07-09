@@ -276,6 +276,7 @@ const CommentBottomSheet = ({ isVisible, handleCloseModal, postId }) => {
           data={comments}
           renderItem={renderItem}
           keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
         />
         <View
           style={{

@@ -42,7 +42,7 @@ const UploadPostScreen = () => {
 
   useEffect(() => {
     getUser();
-  }, []);
+  }, [userId]);
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({

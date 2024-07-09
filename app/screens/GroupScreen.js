@@ -91,6 +91,7 @@ const GroupScreen = () => {
         }
         keyExtractor={(item, index) => index.toString()}
         contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   );

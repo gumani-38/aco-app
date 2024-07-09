@@ -4,8 +4,8 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web"
   },
   "dependencies": {
@@ -53,7 +53,8 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-video": "^5.2.1",
     "react-native-webview": "^13.8.6",
-    "supabase": "^1.178.2"
+    "supabase": "^1.178.2",
+    "expo-system-ui": "~3.0.7"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
