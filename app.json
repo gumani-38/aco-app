@@ -11,18 +11,24 @@
       "resizeMode": "contain",
       "backgroundColor": "#001138"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourcompany.acoapp",
-      "associatedDomains": ["applinks:yourapp.com"]
+      "associatedDomains": [
+        "applinks:yourapp.com"
+      ]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./app/assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "permissions": ["android.permission.RECORD_AUDIO"],
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
       "package": "com.yourcompany.acoapp"
     },
     "web": {
@@ -35,17 +41,17 @@
           "photosPermission": "The app accesses your photos to let you share them with your friends."
         }
       ],
-      "expo-router"
+      "expo-router",
+      "expo-build-properties"
     ],
     "extra": {
       "router": {
         "origin": false
       },
       "eas": {
-        "projectId": "74ce76a1-7f22-47e0-90ef-43cf54ffd5cb"
+        "projectId": "59bf0c15-a5ad-4320-847e-ebf4ccd4bdaa"
       }
     },
-    "owner": "gumza-28",
-    "scheme": "acoapp"
+    "owner": "africaconnectonline"
   }
 }
